@@ -1,0 +1,51 @@
+# Sintering of two Al nanoparticles, NVT
+# Run: mpirun -np 6 lmp_mpi -log none -in in.sinter -var T 700
+#      mpirun -np 6 lmp_mpi -log none -in in.sinter -var T 800
+# Outputs go to output/<T>K/
+
+variable        T index 700
+variable        DATA index structure/Al_nanoparticles.lmp
+variable        NSTEPS index 500000
+
+variable        OUT index output/${T}K
+shell           mkdir ${OUT}
+log             ${OUT}/log_${T}.lammps
+
+units           metal
+dimension       3
+boundary        p p p
+atom_style      atomic
+
+read_data       ${DATA}
+
+pair_style      eam/alloy
+pair_coeff      * * Al99.eam.alloy Al
+
+# Relax the freshly cut surfaces before heating
+minimize        1e-8 1e-10 5000 50000
+reset_timestep  0
+
+velocity        all create ${T} 12345 mom yes rot yes
+
+timestep        0.001
+
+fix             1 all nvt temp ${T} ${T} 0.1
+
+# Neck size: atoms in a 4 A slab at the mid-plane (follows the centre of mass)
+variable        xlo equal xcm(all,x)-2.0
+variable        xhi equal xcm(all,x)+2.0
+region          neck block v_xlo v_xhi INF INF INF INF
+variable        nneck equal count(all,neck)
+
+# Overall size: radius of gyration falls as the pair becomes one particle
+compute         rg all gyration
+
+thermo          1000
+thermo_style    custom step time temp pe ke etotal c_rg v_nneck
+
+dump            1 all custom 1000 ${OUT}/traj_${T}.lammpstrj id type x y z
+
+run             ${NSTEPS}
+
+unfix           1
+write_data      ${OUT}/final_${T}.data
