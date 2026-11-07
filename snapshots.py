@@ -1,6 +1,7 @@
 """Render OVITO snapshots of traj_<T>.lammpstrj at chosen times.
 
 Usage: .venv/bin/python snapshots.py 700 0 12 16 500   (T, then times in ps)
+       SNAP_OUT=images/frames/700K .venv/bin/python snapshots.py 700 0 2 4 ...   (other output folder)
 
 Reads output/<T>K/traj_<T>.lammpstrj; for each time writes two images into
 images/<T>K/ (one dump frame = 1 ps):
@@ -19,7 +20,7 @@ from ovito.vis import TachyonRenderer, Viewport
 T = sys.argv[1]
 times = [int(t) for t in sys.argv[2:]]
 
-outdir = f"images/{T}K"
+outdir = os.environ.get("SNAP_OUT", f"images/{T}K")   # set SNAP_OUT to write somewhere else
 os.makedirs(outdir, exist_ok=True)
 pipeline = import_file(f"output/{T}K/traj_{T}.lammpstrj")
 pipeline.add_to_scene()
